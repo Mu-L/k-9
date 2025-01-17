@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.runtime.Composable
@@ -13,20 +15,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.k9mail.core.ui.compose.designsystem.atom.icon.Icon
+import app.k9mail.core.ui.compose.designsystem.atom.icon.Icons
 import app.k9mail.core.ui.compose.designsystem.atom.image.FixedScaleImage
-import app.k9mail.core.ui.compose.designsystem.atom.text.TextCaption
-import app.k9mail.core.ui.compose.theme.MainTheme
-import app.k9mail.ui.catalog.ui.common.list.itemDefaultPadding
+import app.k9mail.core.ui.compose.designsystem.atom.image.RemoteImage
+import app.k9mail.core.ui.compose.designsystem.atom.text.TextBodySmall
+import app.k9mail.core.ui.compose.theme2.MainTheme
+import app.k9mail.ui.catalog.ui.common.list.defaultItem
+import app.k9mail.ui.catalog.ui.common.list.defaultItemPadding
+import app.k9mail.ui.catalog.ui.common.list.fullSpanItem
 import app.k9mail.ui.catalog.ui.common.list.sectionHeaderItem
 import app.k9mail.ui.catalog.ui.common.list.sectionSubtitleItem
 
 fun LazyGridScope.imageItems() {
     sectionHeaderItem(text = "Images")
-    item {
+    defaultItem {
         Image(
             painter = painterResource(id = MainTheme.images.logo),
             contentDescription = "logo",
-            modifier = Modifier.itemDefaultPadding(),
+            modifier = Modifier.padding(defaultItemPadding()),
         )
     }
 
@@ -34,25 +41,31 @@ fun LazyGridScope.imageItems() {
     fixedScaleImagesCropped()
     fixedScaleImagesOverflow()
     fixedScaleImagesAlignment()
+
+    sectionHeaderItem(text = "Remote images")
+    remoteImage(
+        url = "https://www.thunderbird.net/media/img/thunderbird/favicon-196.png",
+        description = "Weblink",
+    )
 }
 
 private fun LazyGridScope.fixedScaleImagesCropped() {
     sectionSubtitleItem(text = "Images are cropped by parent container size")
-    item {
+    fullSpanItem {
         FixedScaleImageView(
             description = "Small container",
             width = 40.dp,
             height = 40.dp,
         )
     }
-    item {
+    fullSpanItem {
         FixedScaleImageView(
             description = "Small horizontal container",
             width = 40.dp,
             height = 200.dp,
         )
     }
-    item {
+    fullSpanItem {
         FixedScaleImageView(
             description = "Small vertical container",
             width = 200.dp,
@@ -63,7 +76,7 @@ private fun LazyGridScope.fixedScaleImagesCropped() {
 
 private fun LazyGridScope.fixedScaleImagesOverflow() {
     sectionSubtitleItem(text = "Images overflow parent container size")
-    item {
+    fullSpanItem {
         FixedScaleImageView(
             description = "Small container",
             width = 40.dp,
@@ -71,7 +84,7 @@ private fun LazyGridScope.fixedScaleImagesOverflow() {
             allowOverflow = true,
         )
     }
-    item {
+    fullSpanItem {
         FixedScaleImageView(
             description = "Small horizontal container",
             width = 40.dp,
@@ -79,7 +92,7 @@ private fun LazyGridScope.fixedScaleImagesOverflow() {
             allowOverflow = true,
         )
     }
-    item {
+    fullSpanItem {
         FixedScaleImageView(
             description = "Small vertical container",
             width = 200.dp,
@@ -91,14 +104,14 @@ private fun LazyGridScope.fixedScaleImagesOverflow() {
 
 private fun LazyGridScope.fixedScaleImagesAlignment() {
     sectionSubtitleItem(text = "Images with different alignments")
-    item {
+    fullSpanItem {
         FixedScaleImageView(
             description = "Center",
             width = 200.dp,
             height = 200.dp,
         )
     }
-    item {
+    fullSpanItem {
         FixedScaleImageView(
             description = "Top center",
             width = 200.dp,
@@ -106,7 +119,7 @@ private fun LazyGridScope.fixedScaleImagesAlignment() {
             alignment = Alignment.TopCenter,
         )
     }
-    item {
+    fullSpanItem {
         FixedScaleImageView(
             description = "Bottom center",
             width = 200.dp,
@@ -125,7 +138,7 @@ private fun FixedScaleImageView(
     allowOverflow: Boolean = false,
 ) {
     Column(
-        modifier = Modifier.itemDefaultPadding(),
+        modifier = Modifier.padding(defaultItemPadding()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -140,6 +153,29 @@ private fun FixedScaleImageView(
                 allowOverflow = allowOverflow,
             )
         }
-        TextCaption(text = description)
+        TextBodySmall(text = description)
+    }
+}
+
+private fun LazyGridScope.remoteImage(
+    url: String,
+    description: String,
+) {
+    fullSpanItem {
+        Column(
+            modifier = Modifier.padding(defaultItemPadding()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            RemoteImage(
+                url = url,
+                modifier = Modifier.size(MainTheme.sizes.large),
+                placeholder = {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                    )
+                },
+            )
+            TextBodySmall(text = description)
+        }
     }
 }

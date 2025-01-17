@@ -6,10 +6,10 @@ import app.k9mail.core.ui.compose.common.mvi.BaseViewModel
 import app.k9mail.feature.account.common.domain.AccountDomainContract
 import app.k9mail.feature.account.common.domain.entity.SpecialFolderOptions
 import app.k9mail.feature.account.common.domain.entity.SpecialFolderSettings
+import app.k9mail.feature.account.common.ui.WizardConstants
 import app.k9mail.feature.account.setup.domain.DomainContract.UseCase
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract.Effect
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract.Event
-import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract.Failure.SaveFailed
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract.FormEvent
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract.State
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract.ViewModel
@@ -18,8 +18,6 @@ import com.fsck.k9.mail.folders.FolderFetcherException
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-private const val CONTINUE_NEXT_DELAY = 1500L
 
 class SpecialFoldersViewModel(
     private val formUiModel: SpecialFoldersContract.FormUiModel,
@@ -38,7 +36,6 @@ class SpecialFoldersViewModel(
 
             Event.OnNextClicked -> onNextClicked()
             Event.OnBackClicked -> onBackClicked()
-            Event.OnEditClicked -> onEditClicked()
             Event.OnRetryClicked -> onRetryClicked()
         }
     }
@@ -66,6 +63,7 @@ class SpecialFoldersViewModel(
                 is ValidationResult.Failure -> {
                     updateState {
                         it.copy(
+                            isManualSetup = true,
                             isSuccess = false,
                             isLoading = false,
                         )
@@ -78,7 +76,11 @@ class SpecialFoldersViewModel(
                             isSuccess = true,
                         )
                     }
+
                     saveSpecialFolderSettings()
+
+                    delay(WizardConstants.CONTINUE_NEXT_DELAY)
+                    navigateNext()
                 }
             }
         }
@@ -93,56 +95,40 @@ class SpecialFoldersViewModel(
                 state.copy(
                     isLoading = false,
                     isSuccess = false,
-                    error = SpecialFoldersContract.Failure.LoadFoldersFailed(exception.message ?: "unknown error"),
+                    error = SpecialFoldersContract.Failure.LoadFoldersFailed(exception.messageFromServer),
                 )
             }
             null
         }
     }
 
-    @Suppress("TooGenericExceptionCaught")
-    private suspend fun saveSpecialFolderSettings() {
+    private fun saveSpecialFolderSettings() {
         val formState = state.value.formState
 
-        try {
-            accountStateRepository.setSpecialFolderSettings(
-                SpecialFolderSettings(
-                    archiveSpecialFolderOption = formState.selectedArchiveSpecialFolderOption,
-                    draftsSpecialFolderOption = formState.selectedDraftsSpecialFolderOption,
-                    sentSpecialFolderOption = formState.selectedSentSpecialFolderOption,
-                    spamSpecialFolderOption = formState.selectedSpamSpecialFolderOption,
-                    trashSpecialFolderOption = formState.selectedTrashSpecialFolderOption,
-                ),
+        accountStateRepository.setSpecialFolderSettings(
+            SpecialFolderSettings(
+                archiveSpecialFolderOption = formState.selectedArchiveSpecialFolderOption,
+                draftsSpecialFolderOption = formState.selectedDraftsSpecialFolderOption,
+                sentSpecialFolderOption = formState.selectedSentSpecialFolderOption,
+                spamSpecialFolderOption = formState.selectedSpamSpecialFolderOption,
+                trashSpecialFolderOption = formState.selectedTrashSpecialFolderOption,
+            ),
+        )
+        updateState { state ->
+            state.copy(
+                isLoading = false,
             )
-            updateState { state ->
-                state.copy(
-                    isLoading = false,
-                )
-            }
-        } catch (exception: Exception) {
-            Timber.e(exception, "Error while saving special folders")
-            updateState { state ->
-                state.copy(
-                    isLoading = false,
-                    error = SaveFailed(exception.message ?: "unknown error"),
-                )
-            }
-            return
         }
-
-        delay(CONTINUE_NEXT_DELAY)
-        navigateNext()
     }
 
     private fun onNextClicked() {
-        viewModelScope.launch {
-            saveSpecialFolderSettings()
-        }
+        saveSpecialFolderSettings()
+        navigateNext()
     }
 
     private fun navigateNext() {
         viewModelScope.coroutineContext.cancelChildren()
-        emitEffect(Effect.NavigateNext)
+        emitEffect(Effect.NavigateNext(isManualSetup = state.value.isManualSetup))
     }
 
     private fun onBackClicked() {
@@ -150,21 +136,14 @@ class SpecialFoldersViewModel(
         emitEffect(Effect.NavigateBack)
     }
 
-    private fun onEditClicked() {
-        viewModelScope.coroutineContext.cancelChildren()
-        updateState { state ->
-            state.copy(
-                isSuccess = false,
-            )
-        }
-    }
-
     private fun onRetryClicked() {
         viewModelScope.coroutineContext.cancelChildren()
         updateState {
             it.copy(
+                isLoading = true,
                 error = null,
             )
         }
+        onLoadSpecialFolderOptions()
     }
 }

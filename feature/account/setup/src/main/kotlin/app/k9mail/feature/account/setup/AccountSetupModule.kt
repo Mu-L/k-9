@@ -1,6 +1,9 @@
 package app.k9mail.feature.account.setup
 
+import app.k9mail.autodiscovery.api.AutoDiscovery
+import app.k9mail.autodiscovery.api.AutoDiscoveryRegistry
 import app.k9mail.autodiscovery.api.AutoDiscoveryService
+import app.k9mail.autodiscovery.service.RealAutoDiscoveryRegistry
 import app.k9mail.autodiscovery.service.RealAutoDiscoveryService
 import app.k9mail.feature.account.common.featureAccountCommonModule
 import app.k9mail.feature.account.oauth.featureAccountOAuthModule
@@ -15,9 +18,10 @@ import app.k9mail.feature.account.setup.ui.autodiscovery.AccountAutoDiscoveryCon
 import app.k9mail.feature.account.setup.ui.autodiscovery.AccountAutoDiscoveryValidator
 import app.k9mail.feature.account.setup.ui.autodiscovery.AccountAutoDiscoveryViewModel
 import app.k9mail.feature.account.setup.ui.createaccount.CreateAccountViewModel
-import app.k9mail.feature.account.setup.ui.options.AccountOptionsContract
-import app.k9mail.feature.account.setup.ui.options.AccountOptionsValidator
-import app.k9mail.feature.account.setup.ui.options.AccountOptionsViewModel
+import app.k9mail.feature.account.setup.ui.options.display.DisplayOptionsContract
+import app.k9mail.feature.account.setup.ui.options.display.DisplayOptionsValidator
+import app.k9mail.feature.account.setup.ui.options.display.DisplayOptionsViewModel
+import app.k9mail.feature.account.setup.ui.options.sync.SyncOptionsViewModel
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersFormUiModel
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersViewModel
@@ -41,9 +45,18 @@ val featureAccountSetupModule: Module = module {
         OkHttpClient()
     }
 
+    single<AutoDiscoveryRegistry> {
+        val extraAutoDiscoveries = get<List<AutoDiscovery>>(named("extraAutoDiscoveries"))
+        RealAutoDiscoveryRegistry(
+            autoDiscoveries = RealAutoDiscoveryRegistry.createDefaultAutoDiscoveries(
+                okHttpClient = get(),
+            ) + extraAutoDiscoveries,
+        )
+    }
+
     single<AutoDiscoveryService> {
         RealAutoDiscoveryService(
-            okHttpClient = get(),
+            autoDiscoveryRegistry = get(),
         )
     }
 
@@ -61,7 +74,7 @@ val featureAccountSetupModule: Module = module {
     }
 
     factory<AccountAutoDiscoveryContract.Validator> { AccountAutoDiscoveryValidator() }
-    factory<AccountOptionsContract.Validator> { AccountOptionsValidator() }
+    factory<DisplayOptionsContract.Validator> { DisplayOptionsValidator() }
 
     viewModel {
         AccountAutoDiscoveryViewModel(
@@ -76,8 +89,8 @@ val featureAccountSetupModule: Module = module {
         ImapFolderFetcher(
             trustedSocketFactory = get(),
             oAuth2TokenProviderFactory = get(),
-            clientIdAppName = get(named("ClientIdAppName")),
-            clientIdAppVersion = get(named("ClientIdAppVersion")),
+            clientInfoAppName = get(named("ClientInfoAppName")),
+            clientInfoAppVersion = get(named("ClientInfoAppVersion")),
         )
     }
 
@@ -107,8 +120,15 @@ val featureAccountSetupModule: Module = module {
     }
 
     viewModel {
-        AccountOptionsViewModel(
+        DisplayOptionsViewModel(
             validator = get(),
+            accountStateRepository = get(),
+            accountOwnerNameProvider = get(),
+        )
+    }
+
+    viewModel {
+        SyncOptionsViewModel(
             accountStateRepository = get(),
         )
     }

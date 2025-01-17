@@ -5,6 +5,7 @@ import app.k9mail.core.common.domain.usecase.validation.ValidationResult
 import app.k9mail.core.ui.compose.testing.MainDispatcherRule
 import app.k9mail.core.ui.compose.testing.mvi.assertThatAndEffectTurbineConsumed
 import app.k9mail.core.ui.compose.testing.mvi.assertThatAndStateTurbineConsumed
+import app.k9mail.core.ui.compose.testing.mvi.runMviTest
 import app.k9mail.core.ui.compose.testing.mvi.turbinesWithInitialStateCheck
 import app.k9mail.feature.account.common.data.InMemoryAccountStateRepository
 import app.k9mail.feature.account.common.domain.AccountDomainContract
@@ -17,7 +18,6 @@ import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract.FormEvent
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract.FormState
 import app.k9mail.feature.account.setup.ui.specialfolders.SpecialFoldersContract.State
-import app.k9mail.feature.account.setup.ui.specialfolders.fake.FakeSpecialFoldersFormUiModel
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
@@ -26,7 +26,6 @@ import com.fsck.k9.mail.folders.FolderFetcherException
 import com.fsck.k9.mail.folders.FolderServerId
 import com.fsck.k9.mail.folders.RemoteFolder
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 
@@ -37,7 +36,7 @@ class SpecialFoldersViewModelTest {
 
     @Test
     fun `should load folders, validate and save successfully when LoadSpecialFolders event received and setup valid`() =
-        runTest {
+        runMviTest {
             val accountStateRepository = InMemoryAccountStateRepository()
             val initialState = State(
                 isLoading = true,
@@ -75,7 +74,7 @@ class SpecialFoldersViewModelTest {
             }
 
             turbines.assertThatAndEffectTurbineConsumed {
-                isEqualTo(Effect.NavigateNext)
+                isEqualTo(Effect.NavigateNext(false))
             }
 
             assertThat(accountStateRepository.getState()).isEqualTo(
@@ -92,7 +91,7 @@ class SpecialFoldersViewModelTest {
         }
 
     @Test
-    fun `should load folders and validate unsuccessful when LoadSpecialFolders event received`() = runTest {
+    fun `should load folders and validate unsuccessful when LoadSpecialFolders event received`() = runMviTest {
         val accountStateRepository = InMemoryAccountStateRepository()
         val initialState = State(
             isLoading = true,
@@ -108,6 +107,7 @@ class SpecialFoldersViewModelTest {
         testSubject.event(Event.LoadSpecialFolderOptions)
 
         val unvalidatedState = initialState.copy(
+            isManualSetup = true,
             isLoading = false,
             isSuccess = false,
             formState = FormState(
@@ -135,14 +135,14 @@ class SpecialFoldersViewModelTest {
     }
 
     @Test
-    fun `should change to error state when LoadSpecialFolders fails with loading folder failure`() = runTest {
+    fun `should change to error state when LoadSpecialFolders fails with loading folder failure`() = runMviTest {
         val initialState = State(
             isLoading = true,
         )
         val testSubject = createTestSubject(
             formUiModel = FakeSpecialFoldersFormUiModel(),
             getSpecialFolderOptions = {
-                throw FolderFetcherException(IllegalStateException("Failed to load folders"))
+                throw FolderFetcherException(IllegalStateException(), messageFromServer = "Failed to load folders")
             },
             initialState = initialState,
         )
@@ -164,7 +164,7 @@ class SpecialFoldersViewModelTest {
     }
 
     @Test
-    fun `should delegate form events to form view model`() = runTest {
+    fun `should delegate form events to form view model`() = runMviTest {
         val formUiModel = FakeSpecialFoldersFormUiModel()
         val testSubject = createTestSubject(
             formUiModel = formUiModel,
@@ -186,8 +186,8 @@ class SpecialFoldersViewModelTest {
     }
 
     @Test
-    fun `should save form data and emit NavigateNext effect when OnNextClicked event received`() = runTest {
-        val initialState = State(isSuccess = true)
+    fun `should save form data and emit NavigateNext effect when OnNextClicked event received`() = runMviTest {
+        val initialState = State(isManualSetup = true)
         val accountStateRepository = InMemoryAccountStateRepository()
         val testSubject = createTestSubject(
             initialState = initialState,
@@ -197,12 +197,10 @@ class SpecialFoldersViewModelTest {
 
         testSubject.event(Event.OnNextClicked)
 
-        turbines.assertThatAndStateTurbineConsumed {
-            isEqualTo(initialState.copy(isLoading = false))
-        }
+        assertThat(turbines.awaitStateItem()).isEqualTo(initialState.copy(isLoading = false))
 
         turbines.assertThatAndEffectTurbineConsumed {
-            isEqualTo(Effect.NavigateNext)
+            isEqualTo(Effect.NavigateNext(true))
         }
 
         assertThat(accountStateRepository.getState()).isEqualTo(
@@ -219,7 +217,7 @@ class SpecialFoldersViewModelTest {
     }
 
     @Test
-    fun `should emit NavigateBack effect when OnBackClicked event received`() = runTest {
+    fun `should emit NavigateBack effect when OnBackClicked event received`() = runMviTest {
         val testSubject = createTestSubject()
         val turbines = turbinesWithInitialStateCheck(testSubject, State())
 
@@ -231,28 +229,46 @@ class SpecialFoldersViewModelTest {
     }
 
     @Test
-    fun `should show form when OnEditClicked event received`() = runTest {
-        val initialState = State(isSuccess = true)
-        val testSubject = createTestSubject(initialState = initialState)
-        val turbines = turbinesWithInitialStateCheck(testSubject, initialState)
-
-        testSubject.event(Event.OnEditClicked)
-
-        turbines.assertThatAndStateTurbineConsumed {
-            isEqualTo(initialState.copy(isSuccess = false))
-        }
-    }
-
-    @Test
-    fun `should show form when OnRetryClicked event received`() = runTest {
-        val initialState = State(error = SpecialFoldersContract.Failure.SaveFailed("error"))
+    fun `should show form when OnRetryClicked event received`() = runMviTest {
+        val initialState = State(error = SpecialFoldersContract.Failure.LoadFoldersFailed("irrelevant"))
         val testSubject = createTestSubject(initialState = initialState)
         val turbines = turbinesWithInitialStateCheck(testSubject, initialState)
 
         testSubject.event(Event.OnRetryClicked)
 
-        turbines.assertThatAndStateTurbineConsumed {
-            isEqualTo(initialState.copy(error = null))
+        assertThat(turbines.awaitStateItem()).isEqualTo(
+            initialState.copy(
+                isLoading = true,
+                error = null,
+            ),
+        )
+
+        // Turbine misses the intermediate state because we're using UnconfinedTestDispatcher and StateFlow.
+        // Here we need to make sure the coroutine used to load the special folder options has completed.
+        mainDispatcherRule.testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(turbines.awaitStateItem()).isEqualTo(
+            State(
+                isLoading = false,
+                isSuccess = true,
+                formState = FormState(
+                    archiveSpecialFolderOptions = SPECIAL_FOLDER_OPTIONS.archiveSpecialFolderOptions,
+                    draftsSpecialFolderOptions = SPECIAL_FOLDER_OPTIONS.draftsSpecialFolderOptions,
+                    sentSpecialFolderOptions = SPECIAL_FOLDER_OPTIONS.sentSpecialFolderOptions,
+                    spamSpecialFolderOptions = SPECIAL_FOLDER_OPTIONS.spamSpecialFolderOptions,
+                    trashSpecialFolderOptions = SPECIAL_FOLDER_OPTIONS.trashSpecialFolderOptions,
+
+                    selectedArchiveSpecialFolderOption = SPECIAL_FOLDER_ARCHIVE.copy(isAutomatic = true),
+                    selectedDraftsSpecialFolderOption = SPECIAL_FOLDER_DRAFTS.copy(isAutomatic = true),
+                    selectedSentSpecialFolderOption = SPECIAL_FOLDER_SENT.copy(isAutomatic = true),
+                    selectedSpamSpecialFolderOption = SPECIAL_FOLDER_SPAM.copy(isAutomatic = true),
+                    selectedTrashSpecialFolderOption = SPECIAL_FOLDER_TRASH.copy(isAutomatic = true),
+                ),
+            ),
+        )
+
+        turbines.assertThatAndEffectTurbineConsumed {
+            isEqualTo(Effect.NavigateNext(false))
         }
     }
 

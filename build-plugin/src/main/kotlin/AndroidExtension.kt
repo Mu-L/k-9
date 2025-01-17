@@ -2,7 +2,7 @@ import com.android.build.api.dsl.CommonExtension
 import org.gradle.accessors.dm.LibrariesForLibs
 import org.gradle.api.artifacts.dsl.DependencyHandler
 
-internal fun CommonExtension<*, *, *, *, *>.configureSharedConfig() {
+internal fun CommonExtension<*, *, *, *, *, *>.configureSharedConfig() {
     compileSdk = ThunderbirdProjectConfig.androidSdkCompile
 
     defaultConfig {
@@ -46,13 +46,9 @@ internal fun CommonExtension<*, *, *, *, *>.configureSharedConfig() {
     }
 }
 
-internal fun CommonExtension<*, *, *, *, *>.configureSharedComposeConfig(libs: LibrariesForLibs) {
+internal fun CommonExtension<*, *, *, *, *, *>.configureSharedComposeConfig(libs: LibrariesForLibs) {
     buildFeatures {
         compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.androidxComposeCompiler.get()
     }
 
     lint {

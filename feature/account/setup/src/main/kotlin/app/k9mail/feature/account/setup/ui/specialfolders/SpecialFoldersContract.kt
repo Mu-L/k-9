@@ -1,8 +1,8 @@
 package app.k9mail.feature.account.setup.ui.specialfolders
 
 import app.k9mail.core.ui.compose.common.mvi.UnidirectionalViewModel
+import app.k9mail.core.ui.compose.designsystem.molecule.LoadingErrorState
 import app.k9mail.feature.account.common.domain.entity.SpecialFolderOption
-import app.k9mail.feature.account.common.ui.loadingerror.LoadingErrorState
 
 interface SpecialFoldersContract {
 
@@ -15,6 +15,7 @@ interface SpecialFoldersContract {
     data class State(
         val formState: FormState = FormState(),
 
+        val isManualSetup: Boolean = false,
         val isSuccess: Boolean = false,
         override val error: Failure? = null,
         override val isLoading: Boolean = true,
@@ -36,7 +37,6 @@ interface SpecialFoldersContract {
 
     sealed interface Event {
         data object LoadSpecialFolderOptions : Event
-        data object OnEditClicked : Event
         data object OnRetryClicked : Event
         data object OnNextClicked : Event
         data object OnBackClicked : Event
@@ -51,15 +51,14 @@ interface SpecialFoldersContract {
     }
 
     sealed interface Effect {
-        data object NavigateNext : Effect
+        data class NavigateNext(
+            val isManualSetup: Boolean,
+        ) : Effect
+
         data object NavigateBack : Effect
     }
 
     sealed interface Failure {
-        val message: String
-
-        data class MissingIncomingServerSettings(override val message: String) : Failure
-        data class LoadFoldersFailed(override val message: String) : Failure
-        data class SaveFailed(override val message: String) : Failure
+        data class LoadFoldersFailed(val messageFromServer: String?) : Failure
     }
 }
