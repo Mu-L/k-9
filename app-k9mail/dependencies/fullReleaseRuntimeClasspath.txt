@@ -210,14 +210,14 @@ com.mikepenz:fastadapter:5.7.0
 com.squareup.moshi:moshi:1.15.2
 com.squareup.okhttp3:okhttp-android:5.3.0
 com.squareup.okhttp3:okhttp:5.3.0
-com.squareup.okio:okio-jvm:3.16.2
-com.squareup.okio:okio:3.16.2
+com.squareup.okio:okio-jvm:3.16.4
+com.squareup.okio:okio:3.16.4
 com.takisoft.colorpicker:colorpicker:1.0.0
 com.takisoft.datetimepicker:datetimepicker:1.0.2
 com.takisoft.preferencex:preferencex-colorpicker:1.1.0
 com.takisoft.preferencex:preferencex-datetimepicker:1.1.0
 com.takisoft.preferencex:preferencex:1.1.0
-commons-io:commons-io:2.20.0
+commons-io:commons-io:2.21.0
 de.cketti.library.changelog:ckchangelog-core:2.0.0-beta02
 de.cketti.safecontentresolver:safe-content-resolver-v21:1.0.0
 de.hdodenhof:circleimageview:3.1.0
